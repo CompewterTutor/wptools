@@ -49,24 +49,39 @@ usage() {
 # Load .env files first
 load_env
 
+# Check if dry-run is enabled
+is_dry_run=false
+dry_run() {
+    echo "[DRY-RUN] $1"
+}
+
+# Parse global options before commands
+for arg in "$@"; do
+    if [[ "$arg" == "--dry-run" ]]; then
+        is_dry_run=true
+        break
+    fi
+done
+
 # Dispatch commands to corresponding scripts
 case "$1" in
     backup)
         source_lib "backup"
         shift
-        backup "$@"
+        backup "$@" ${is_dry_run:+--dry-run}
         ;;
     restore)
         source_lib "restore"
         shift
-        restore "$@"
+        restore "$@" ${is_dry_run:+--dry-run}
         ;;
     undo)
         source_lib "undo"
         shift
-        undo "$@"
+        undo "$@" ${is_dry_run:+--dry-run}
         ;;
     *)
         usage
         ;;
 esac
+
