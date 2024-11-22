@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# WP TOOLS
+# This utility is for managing wordpress installations on the commandline
 # Main entry point for wptools utility
 # Load and call commands based on input arguments
 
