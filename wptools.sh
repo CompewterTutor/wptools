@@ -5,6 +5,26 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIB_DIR="$SCRIPT_DIR/lib"
 
+# Default log file location
+LOG_FILE="${WP_LOG_FILE:-/usr/local/var/log/wptools.log}"
+
+# Ensure the log directory exists
+mkdir -p "$(dirname "$LOG_FILE")"
+
+# Logging function
+log() {
+    local level="$1"
+    local message="$2"
+    local timestamp
+    timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+    echo "[$timestamp] [$level] $message" | tee -a "$LOG_FILE"
+}
+
+# Example usage:
+# log "INFO" "Starting backup process..."
+# log "ERROR" "Failed to locate webroot directory."
+
+
 # Load environment variables from .env files
 load_env() {
     local env_file

@@ -30,10 +30,14 @@ backup() {
             --dry-run)
                 dry_run=true
                 ;;
+            --log-file)
+                LOG_FILE="$2"
+                shift
+                ;;
             --help)
-                echo "Usage: wptools backup [--db-name <name>] [--webroot <path>] [--files] [--database] [--dry-run]"
+                echo "Usage: wptools backup [--db-name <name>] [--webroot <path>] [--files] [--database] [--dry-run] [--log-file <file>]"
                 echo "Environment variables used (fallbacks):"
-                echo "  WP_WEBROOT, WP_DATABASE_NAME, WP_SNAPSHOT_DIRECTORY"
+                echo "  WP_WEBROOT, WP_DATABASE_NAME, WP_SNAPSHOT_DIRECTORY, WP_LOG_FILE"
                 return
                 ;;
             *)
@@ -44,9 +48,12 @@ backup() {
         shift
     done
 
+    # Log the start of the backup process
+    log "INFO" "Starting backup process. Webroot: $webroot, Database: $db_name, Dry-run: $dry_run"
+
     # Validate webroot
     if [[ -z "$webroot" ]]; then
-        echo "Error: Webroot must be specified via --webroot or WP_WEBROOT."
+        log "ERROR" "Webroot must be specified via --webroot or WP_WEBROOT."
         return 1
     fi
 
@@ -54,14 +61,11 @@ backup() {
     if [[ "$dry_run" = false ]]; then
         mkdir -p "$backup_dir"
     else
-        dry_run "mkdir -p $backup_dir"
+        log "DRY-RUN" "mkdir -p $backup_dir"
     fi
 
     # Perform file backup
     if [[ "$only_files" = true || "$only_db" = false ]]; then
-        echo "Backing up files from $webroot..."
-        
-        # Navigate to the parent directory of the webroot
         local parent_dir
         parent_dir=$(dirname "$webroot")
         local site_name
@@ -69,36 +73,31 @@ backup() {
 
         if [[ "$dry_run" = false ]]; then
             cd "$parent_dir" || {
-                echo "Error: Unable to navigate to $parent_dir."
+                log "ERROR" "Unable to navigate to $parent_dir."
                 return 1
             }
-
             tar -cpvzf "$backup_dir/${site_name}-files-backup-${timestamp}.tar.gz" "$site_name"
+            log "INFO" "File backup completed: $backup_dir/${site_name}-files-backup-${timestamp}.tar.gz"
         else
-            dry_run "cd $parent_dir"
-            dry_run "tar -cpvzf $backup_dir/${site_name}-files-backup-${timestamp}.tar.gz $site_name"
+            log "DRY-RUN" "cd $parent_dir"
+            log "DRY-RUN" "tar -cpvzf $backup_dir/${site_name}-files-backup-${timestamp}.tar.gz $site_name"
         fi
-
-        echo "File backup completed: $backup_dir/${site_name}-files-backup-${timestamp}.tar.gz"
     fi
 
     # Perform database backup
     if [[ "$only_db" = true || "$only_files" = false ]]; then
         if [[ -z "$db_name" ]]; then
-            echo "Error: Database name must be specified via --db-name or WP_DATABASE_NAME."
+            log "ERROR" "Database name must be specified via --db-name or WP_DATABASE_NAME."
             return 1
         fi
 
-        echo "Backing up database $db_name..."
-
         if [[ "$dry_run" = false ]]; then
             mysqldump --add-drop-table -u "$WP_DATABASE_USER" -p"$WP_DATABASE_PASSWORD" "$db_name" > "$backup_dir/${db_name}-db-backup-${timestamp}.sql"
+            log "INFO" "Database backup completed: $backup_dir/${db_name}-db-backup-${timestamp}.sql"
         else
-            dry_run "mysqldump --add-drop-table -u $WP_DATABASE_USER -p<hidden> $db_name > $backup_dir/${db_name}-db-backup-${timestamp}.sql"
+            log "DRY-RUN" "mysqldump --add-drop-table -u $WP_DATABASE_USER -p<hidden> $db_name > $backup_dir/${db_name}-db-backup-${timestamp}.sql"
         fi
-
-        echo "Database backup completed: $backup_dir/${db_name}-db-backup-${timestamp}.sql"
     fi
 
-    echo "Backup completed successfully."
+    log "INFO" "Backup process completed successfully."
 }
